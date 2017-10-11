@@ -1,5 +1,6 @@
 # Sorting and Filtering Grouped Bart Charts
 A grouped bar chart, with sort and filter options.
+![preview](https://github.com/levizimmerman/fe3-assessment-2/blob/master/preview.png?raw=true)
 
 ## Background
 The goal of this exercise is to clean, transform, display, animate and interact with your data. I have chosen to use data from [data.amsterdam.nl][dataamsterdam].
