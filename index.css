@@ -7,3 +7,73 @@ body {
   background: #f0f0f0;
   font-family: Roboto, 'Droid Sans', sans-serif;
 }
+
+.header {
+  background: #24A122;
+  padding: 1rem;
+  position: fixed;
+  width: 100%;
+  bottom: 0;
+  transition: transform 0.2s ease-in-out;
+  transform: translateY(100%);
+  color: #fff;
+}
+
+header.is-open {
+  transform: none;
+}
+
+.edit-chart {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transition: transform 0.1s ease-in-out;
+  transform: translate(-50%, -100%);
+  background-color: #24A122;
+  color: #fff;
+  outline: none;
+  border: none;
+  font-size: 0.8rem;
+  padding: 0.5rem 1rem;
+  border-radius: 4px 4px 0px 0px;
+  cursor: pointer;
+}
+
+.edit-chart:hover {
+  transform: translate(-50%, -100%) scale(1.2);
+}
+
+.title h1 {
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+.title {
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.mod::after {
+  content: ' ';
+  clear: both;
+  display: block;
+}
+
+.mod__item {
+  float: left;
+}
+
+.mod__item label {
+  font-size: 0.8rem;
+}
+
+.mod__item+.mod__item {
+  margin-left: 0.5rem;
+  padding-left: 0.5rem;
+  border-left: 1px solid #ccc;
+}
+
+text.bar-info {
+  fill: #fff;
+}

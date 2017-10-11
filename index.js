@@ -8,7 +8,7 @@ var svg = d3.select('svg');
 var margin = {
   top: 30,
   right: 30,
-  bottom: 30,
+  bottom: 90,
   left: 30
 };
 var width = window.innerWidth - margin.left - margin.right;
@@ -17,6 +17,7 @@ var selectYear = 2013;
 var keys = ['v_wp', 'wp'];
 var selectYearElement = document.getElementById('selectYear');
 var selectSortElement = document.getElementById('selectSort');
+var buttonEditElement = document.getElementById('editChart');
 var currentData;
 var group = svg.append('g')
   .attr('transform', 'translate(' + margin.left + ', ' + margin.top + ')')
@@ -42,10 +43,12 @@ Events.on('data/clean/done', handleDataCleanDone);
 Events.on('data/parse/done', handleDataParseDone);
 Events.on('year/change', handleYearChange);
 Events.on('sort/change', handleSortChange);
+Events.on('edit/click', handleEditChartClick);
 
 // Event Listeners
 selectYearElement.addEventListener('change', handleSelectYearChange);
 selectSortElement.addEventListener('change', handleSelectSortChange);
+buttonEditElement.addEventListener('click', handleButtonEditChartClick);
 
 (function() {
   cleanDataFromFile(file);
@@ -60,110 +63,125 @@ function handleDataParseDone(data) {
 }
 
 function drawChart(drawData) {
+  // console.log(drawData);
   // Join data
   var barGroup = group.selectAll('.bar-group')
-  .data(drawData, function(data) {
-    return data.id;
-  });
+    .data(drawData, function(data) {
+      return data.id;
+    });
 
   // Remove data
   barGroup.exit().remove();
 
   // Update existing
   barGroup.attr('transform', function(data) {
-    return 'translate(' + x0(data.id) + ', 0)';
-  });
+      return d3.select(this).attr('transform');
+    })
+    .transition()
+    .duration(500)
+    .delay(function(data, index) {
+      return index * 20;
+    })
+    .attr('transform', function(data) {
+      return 'translate(' + x0(data.id) + ', 0)';
+    });
 
   // Enter new ones
   var barGroupEnter = barGroup.enter().append('g')
-  .attr('class', 'bar-group')
-  .attr('transform', function(data) {
-    return 'translate(' + x0(data.id) + ', 0)';
-  });
+    .attr('class', 'bar-group')
+    .attr('transform', function(data) {
+      return 'translate(' + x0(data.id) + ', 0)';
+    })
+    .on('mouseenter', handleMouseEnterBarGroup)
+    .on('mouseleave', handleMouseLeaveBarGroup);;
 
   // Join data
   var bar = barGroupEnter.selectAll('.bar')
-  .data(createXGroupKeyValue, function(data) {
-    return data.key;
-  });
+    .data(createXGroupKeyValue, function(data) {
+      return data.key;
+    });
 
   // Remove data
   bar.exit().remove();
 
   // Update existing
   barGroup.selectAll('.bar')
-  .data(createXGroupKeyValue, function(data) {
-    return data.key;
-  })
-  .attr('x', function(data) {
-    return x1(data.key);
-  })
-  .attr('y', function(data) {
-    return d3.select(this).attr('y');
-  })
-  .transition()
-  .duration(500)
-  .attr('y', function(data) {
-    return y(data.value);
-  })
-  .attr('width', x1.bandwidth())
-  .attr('height', function(data) {
-    return height - y(data.value);
-  })
-  .attr('fill', function(data) {
-    return color(data.key);
-  });
+    .data(createXGroupKeyValue, function(data) {
+      return data.key;
+    })
+    .attr('x', function(data) {
+      return x1(data.key);
+    })
+    .attr('y', function(data) {
+      return d3.select(this).attr('y');
+    })
+    .transition()
+    .duration(500)
+    .attr('y', function(data) {
+      return y(data.value);
+    })
+    .attr('width', x1.bandwidth())
+    .attr('height', function(data) {
+      return height - y(data.value);
+    })
+    .attr('fill', function(data) {
+      return color(data.key);
+    });
 
   // Enter new ones
   var barEnter = bar.enter().append('rect')
-  .attr('class', 'bar')
-  .attr('x', function(data) {
-    return x1(data.key);
-  })
-  .attr('y', function(data) {
-    return y(data.value);
-  })
-  .attr('width', x1.bandwidth())
-  .attr('height', function(data) {
-    return height - y(data.value);
-  })
-  .attr('fill', function(data) {
-    return color(data.key);
-  });
+    .attr('class', 'bar')
+    .attr('x', function(data) {
+      return x1(data.key);
+    })
+    .attr('y', function(data) {
+      return y(data.value);
+    })
+    .attr('width', x1.bandwidth())
+    .attr('height', function(data) {
+      return height - y(data.value);
+    })
+    .attr('fill', function(data) {
+      return color(data.key);
+    })
+    .on('mouseenter', handleMouseEnterBar)
+    .on('mouseleave', handleMouseLeaveBar);
 
   // Join data
   var yAxis = group.selectAll('.y-axis').data([drawData]);
 
   // Update
-  yAxis.call(d3.axisLeft(y).ticks(null, 's'))
+  yAxis.transition()
+    .duration(500)
+    .call(d3.axisLeft(y).ticks(null, 's'))
     .select('text')
     .attr('y', y(y.ticks().pop()) + 0.5);
 
   // Enter
   yAxis.enter().append('g')
-  .attr('class', 'y-axis')
-  .call(d3.axisLeft(y).ticks(null, 's'))
-  .append('text')
-  .attr('x', 2)
-  .attr('y', y(y.ticks().pop()) + 0.5)
-  .attr('dy', '0.32em')
-  .attr('fill', '#000')
-  .attr('font-weight', 'bold')
-  .attr('text-anchor', 'start')
-  .text('Werkzame personen');
+    .attr('class', 'y-axis')
+    .call(d3.axisLeft(y).ticks(null, 's'))
+    .append('text')
+    .attr('x', 2)
+    .attr('y', y(y.ticks().pop()) + 0.5)
+    .attr('dy', '0.32em')
+    .attr('fill', '#000')
+    .attr('font-weight', 'bold')
+    .attr('text-anchor', 'start')
+    .text('Werkzame personen');
 
   // Join data
   var xAxis = group.selectAll('.x-axis').data([drawData]);
 
   // Update
   xAxis.attr('transform', 'translate(0,' + height + ')')
-  .call(d3.axisBottom(x0));
+    .call(d3.axisBottom(x0));
 
   // Enter
   xAxis.enter().append('g')
-  .attr('class', 'x-axis')
-  .attr('transform', 'translate(0,' + height + ')')
-  .call(d3.axisBottom(x0));
+    .attr('class', 'x-axis')
+    .attr('transform', 'translate(0,' + height + ')')
+    .call(d3.axisBottom(x0));
 }
 
 function setDomains() {
@@ -202,18 +220,34 @@ function setLegend() {
     });
 }
 
+function getNameById(id) {
+  var foundRow = currentData.find(function(row) {
+    return row.id === id;
+  });
+  return capitalizeFirstLetter(foundRow.name);
+}
+
+/*
+*
+* Source: https://stackoverflow.com/questions/1026069/how-do-i-make-the-first-letter-of-a-string-uppercase-in-javascript
+*/
+function capitalizeFirstLetter(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
 function getKeyName(data) {
-  switch(data) {
+  switch (data) {
     case 'wp':
-    return 'werkzame pers.';
+      return 'werkzame pers.';
     case 'v_wp':
-    return 'vestigingen met wp';
+      return 'vestigingen met wp';
   }
   return data;
 }
 
 function handleYearChange(data) {
   selectYear = data.year;
+  setDomains();
   drawChart(currentData);
 }
 
@@ -223,6 +257,7 @@ function handleSortChange(data) {
     var nextMax = d3.max(next.values, total);
     return data.sort === 'ASC' ? currentMax - nextMax : nextMax - currentMax;
   });
+  setDomains();
   drawChart(currentData);
 }
 
@@ -252,11 +287,13 @@ function vwp(value) {
 
 function filterYearInData(data) {
   var copyData = data;
-  data.map(function(row){
+  data.map(function(row) {
     var newValues = row.values.filter(function(value) {
       return value.year === selectYear;
     });
-    return Object.assign(row, {values: newValues});
+    return Object.assign(row, {
+      values: newValues
+    });
   });
   return data;
 }
@@ -356,10 +393,95 @@ function cleanDataFromFile(file) {
   });
 }
 
+function handleEditChartClick() {
+  var header = document.querySelector('.header');
+  var classNameOpen = 'is-open';
+  if (header.classList.contains(classNameOpen)) {
+    header.classList.remove(classNameOpen);
+  } else {
+    header.classList.add(classNameOpen);
+  }
+}
+
+function handleMouseEnterBar(data) {
+  d3.select(this)
+  .attr('opacity', 1)
+  .transition()
+  .duration(200)
+  .attr('opacity', 0.7);
+  // Select parent to append element to bar group
+  var parentGroup = d3.select(this.parentNode);
+  var transform = parentGroup.attr('transform');
+  var parentGroupX = Number(transform.slice(transform.indexOf('(') + 1, transform.indexOf(',')));
+  // Calculate width with length of the value, in order to add a fitting box for text
+  var width = data.value.toString().length * 9;
+  group.append('rect')
+    .attr('class', 'bar-info bar-info-box')
+    .attr('opacity', 0)
+    // Calculate center of bar by adding the half of the width to the start x position
+    .attr('x', x1(data.key) + parentGroupX)
+    .transition()
+    .duration(200)
+    .delay(100)
+    .attr('opacity', 1)
+    .attr('y', y(data.value) - 25)
+    .attr('width', width)
+    .attr('height', 20)
+    .attr('fill', '#ddd');
+
+  group.append('text')
+    .attr('class', 'bar-info bar-info-text')
+    .attr('text-anchor', 'start')
+    .attr('opacity', 0)
+    .style('fill', '#555')
+    .transition()
+    .duration(200)
+    .attr('y', y(data.value) - 11)
+    .attr('opacity', 1)
+    .attr('x', x1(data.key) + 5 + parentGroupX)
+    .attr('font-size', 12)
+    .text(data.value);
+}
+
+function handleMouseEnterBarGroup(data, index) {
+  var name = getNameById(data.id);
+  var barGroup = d3.select(this);
+  var barGroupNodeBox = barGroup.node().getBBox();
+  barGroup.append('text')
+  .attr('class', 'x-text')
+  .attr('y', height + 35)
+  .attr('x', barGroupNodeBox.width / 2)
+  .attr('fill', '#000')
+  .attr('text-anchor', 'middle')
+  .attr('font-size', 12)
+  .attr('font-weight', 'bold')
+  .text(name);
+}
+
+function handleMouseLeaveBarGroup(data, index) {
+  var barGroup = d3.select(this);
+  barGroup.selectAll('.x-text')
+  .remove();
+}
+
+function handleMouseLeaveBar(data) {
+  d3.select(this).attr('opacity', 1);
+    group.selectAll('.bar-info')
+      .remove();
+}
+
 function handleSelectYearChange() {
-  Events.emit('year/change', {year: Number(this.value)});
+  Events.emit('year/change', {
+    year: Number(this.value)
+  });
 }
 
 function handleSelectSortChange() {
-  Events.emit('sort/change', {sort: this.value});
+  Events.emit('sort/change', {
+    sort: this.value
+  });
+}
+
+function handleButtonEditChartClick() {
+  Events.emit('edit/click');
 }
