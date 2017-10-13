@@ -3,13 +3,13 @@ A grouped bar chart, with sort and filter options.
 ![preview](https://github.com/levizimmerman/fe3-assessment-2/blob/master/preview.png?raw=true)
 
 ## Background
-The goal of this exercise is to clean, transform, display, animate and interact with your data. I have chosen to use data from [data.amsterdam.nl][dataamsterdam].
+The goal of this exercise is to clean, transform, display, animate and interact with a data set. I have chosen to use data from [data.amsterdam.nl][dataamsterdam].
 
 ### Workflow
 * Clean: Load data as text and remove all unwanted information;
 * Transform: Parse clean data string to CSV and map to useable JSON object;
-* Display: Draw SVG elements to display x and y axis, and bars;
-* Animate: Add transitions to attributes to animate changes in your data;
+* Display: Draw SVG elements to display x and y axis, and a grouped bar chart;
+* Animate: Add transitions to attributes of SVG elements to animate changes in your data;
 * Interact: Add user input fields to manipulate the displayed data;
 
 ## Data
@@ -56,7 +56,7 @@ I took the following steps to clean the data:
     C,industrie,2121,12135,2088,10363,2280,10609,2371,11659,2463,11955
     ...
     ```
-6. Crack open a beer, you have cleaned your data :beer:
+6. Crack a beer open, we have cleaned the data and you are still reading this :beer:
 
 ### Transforming data
 Now you have clean data to work with, so transforming it will be :peanuts:. Parse the data using the [`d3.csvParseRows()`][d3csvparserows]. As second argument to the parse function we add a mapping function. This function will transform the data to an object you can use. Because the original data was nested we have to append a array of values to each ID. This array will consist out of objects:
@@ -76,7 +76,7 @@ return {
     ...
   }
 ```
-2. Then add values by using a function to connect the right values to each year (for now I used a hardcoded year 2013, in the future this can be added dynamically):
+2. Then add values by using a function to connect the right values to each year (for now I used a hardcoded year (2013), in the future this can be added dynamically):
 ```javascript
 return {
     ...
@@ -111,10 +111,10 @@ function createValuesByYear(row, startIndex, startYear) {
   return values;
 }
 ```
-4. Good job! You are still reading this `readme.md`, have a :banana: to keep you focus up. Also the data is now cleaned, transform and ready for loading into d3.
+4. Good job! You are still reading this `readme.md`, have a :banana: to keep your focus up. Also the data is now cleaned, transformed and ready for loading into d3.
 
 ### Displaying data
-I will not go in depth for this part, most of the code patterns used are common within D3 environment. Also [`index.js`][indexjs] is well commented and coded so it "should" explain itself. What I will do is shortlist the most important components:
+I will not go in depth for this part, most of the code patterns used are common within D3 environment. Also [`index.js`][indexjs] is well commented so it "should" explain itself. What I will do is shortlist the most important components:
 #### 1. BarGroup
 Contains two bars, `werkzame personen` and `vestigingen met wp`, for each ID and the selected year. The `transform` attribute is the position on the xAxis.
 ```html
