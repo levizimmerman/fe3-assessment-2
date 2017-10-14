@@ -2,6 +2,9 @@
 A grouped bar chart, with sort and filter options.
 ![preview](https://github.com/levizimmerman/fe3-assessment-2/blob/master/preview.png?raw=true)
 
+## Live Demo
+Link to the live demo can be found [here](https://levizimmerman.github.io/fe3-assessment-2/)
+
 ## Background
 The goal of this exercise is to clean, transform, display, animate and interact with a data set. I have chosen to use data from [data.amsterdam.nl][dataamsterdam].
 
