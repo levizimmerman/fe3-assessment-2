@@ -1,238 +1,323 @@
-# Sorting and Filtering Grouped Bart Charts
-A grouped bar chart, with sort and filter options.
-![preview](https://github.com/levizimmerman/fe3-assessment-2/blob/master/preview.png?raw=true)
-
-## Live Demo
-Link to the live demo can be found [here](https://levizimmerman.github.io/fe3-assessment-2/)
+# Health Data from my iPhone
+[Health app][u_app_health] from Apple is an iOS application that can measure different kinds activities of its OS user.
 
 ## Background
-The goal of this exercise is to clean, transform, display, animate and interact with a data set. I have chosen to use data from [data.amsterdam.nl][dataamsterdam].
+For this project I wanted to use personal data because I was curious if I could get some new insights about myself. Following the steps mentioned in the [workflow][u_workflow] I managed to display the data in four different bar charts:
+1. Step counts per day.
+2. Flights climbed per day.
+3. Distance walked or ran per day.
+4. Sleep cycle per day.
+
+All the chart are displayed on the same x scale, namely time. Time was the only property that all data entries had in common. So when hovering over the chart with your cursor, more detailed information will be displayed. Detailed information includes the exact value of the bar and the difference (%) it has with the mean.
 
 ### Workflow
-* Clean: Load data as text and remove all unwanted information;
-* Transform: Parse clean data string to CSV and map to useable JSON object;
-* Display: Draw SVG elements to display x and y axis, and a grouped bar chart;
-* Animate: Add transitions to attributes of SVG elements to animate changes in your data;
-* Interact: Add user input fields to manipulate the displayed data;
+These were the steps taken in general to create the data visualization:
+1. Export data - From the [Health app][u_app_health] I have exported a XML file.
+2. Import data - Using [`d3.xml()`][u_d3_xml] to load the data and add a mapping function to its callback.
+3. Clean data - Filters all `<Record>` from XML. For each `<Record>` attributes are selected and parsed.
+4. Transform data - Maps filtered data to a workable object.
+5. Create axis - Create y scale based on min and max values, and x scale based on date range (week or month).
+6. Create charts - Draws charts (bars) based on filtered and transformed data.
+7. Add transitions - Animate scale and bars when data is filtered or loaded.
+8. Add events - Events listeners are added to chart elements to add interaction to the visualization.
 
 ## Data
-The dataset from [data.amsterdam.nl][dataamsterdam] is called: "5.1.1 Vestigingen en de hierin werkzame personen 1) naar secties, 1 januari 2013-2017". And is downloaded as `.xlsx` file and later exported as `.csv` file.
-
-The dataset looks as follows:
-```csv
-5.1.1   Vestigingen en de hierin werkzame personen 1) naar secties, 1 januari 2013-2017;;;;;;;;;;
-;;;;;;;;;;
-;2013;;2014;;2015;;2016;;2017;
-sectie;vestigingen met wp;werkzame pers.;vestigingen met wp;werkzame pers.;vestigingen met wp;werkzame pers.;vestigingen met wp;werkzame pers.;vestigingen met wp;werkzame pers.
-;;;;;;;;;;
-A landbouw, bosbouw en visserij;85;134;82;132;82;143;89;178;89;170
-B winning van delfstoffen;10;64;11;60;16;96;13;93;15;170
-C industrie;2121;12135;2088;10363;2280;10609;2371;11659;2463;11955
-...
-```
-You can see that the data has nested values. This is because each row holds multiple values for each year the data is recorded. The components you can extract from the example above are as follows:
-* `A` = ID.
-* `landbouw, bosbouw en visserij` = Name.
-* `85;134;` = Two values of one year (first: 'Vestiging met wp', second: 'Werkzame personen').
-
+Within the [XML][u_xml] file I only select the `<Record>` elements. Then for each `<Record>` I filter out the attribute values I need.
 
 ### Cleaning data
-I took the following steps to clean the data:
-1. Load [`index.csv`][indexcsv] using the [`d3.text()`][d3text] function.
-2. Slice the header from the data string using [`.indexOf('A')`][indexof] and [`.slice()`][slice]. `'A'` is the start of the first row.
-3. Working with the string slice without the header we can remove the footer. The last row of data is the total of all rows combined. By getting the index of `totaal` gives us the end of the data. Now we can use [`.slice()`][slice] again the isoltate the data rows. The data string will look like this:
-  ```
-  A landbouw, bosbouw en visserij;85;134;82;132;82;143;89;178;89;170
-  B winning van delfstoffen;10;64;11;60;16;96;13;93;15;170
-  C industrie;2121;12135;2088;10363;2280;10609;2371;11659;2463;11955
-  ...
-  ```
-4. Now by using [`.split('\n')`][split] we can create an array where each array element is a row of data because we split the string based on a [newline][newline].
-5. Using the [`.forEach()`][foreach] on the newly created array, we can clean each row. I divide the row into two slices, one with the ID (e.g. `A`) and the other with the rest of the data (e.g. `landbouw, bosbouw en visserij;85;134;82;132;82;143;89;178;89;170`).
-    1. The second slice will use the [`.replace()`][replace] two times. First to remove all commas, and then replace all semicolons with a comma. The string will look as follows:
-    `landbouw bosbouw en visserij,85,134,82,132,82,143,89,178,89,170`.
-    2. Now use [.join()][join] function to join the first and second slice of each row. Join the two strings with a comma. And push the string a array element to a temporary array.
-    3. After the [`.forEach`][foreach] has completed, you can use [`.join('\n')`] again to create a string where every row starts on a new line.
-    ```csv
-    A,landbouw bosbouw en visserij,85,134,82,132,82,143,89,178,89,170
-    B,winning van delfstoffen,10,64,11,60,16,96,13,93,15,170
-    C,industrie,2121,12135,2088,10363,2280,10609,2371,11659,2463,11955
-    ...
-    ```
-6. Crack a beer open, we have cleaned the data and you are still reading this :beer:
+I have used the following code to clean the XML and transform it to a JSON object:
+```javascript
+data = [].map.call(data.querySelectorAll('Record'), function (record) {
+  return {
+    type: parseType(record.getAttribute('type')),
+    value: parseValue(record.getAttribute('value')),
+    startDate: parseTime(record.getAttribute('startDate')),
+    endDate: parseTime(record.getAttribute('endDate')),
+    creationDate: parseTime(record.getAttribute('creationDate'))
+  }
+});
+```
+Example of the JSON object can look like this:
+```json
+{
+  "type": "stepCount",
+  "value": 21,
+  "startDate": "Sun Oct 29 2017 20:57:57 GMT+0100 (CET)",
+  "endDate": "Sun Oct 29 2017 21:02:57 GMT+0100 (CET)",
+  "creationDate": "Sun Oct 29 2017 21:05:01 GMT+0100 (CET)",
+}
+```
+
+I have mentioned before that there are four types of `<Record>`, I have listed there XML object below:
+1. [Step count data][u_step_count_data].
+2. [Flights climbed][u_flights_climbed_data].
+3. [Distance walked or ran data][u_distance_walked_or_ran_data].
+4. [Sleep analysis data][u_sleep_analyis_data].
+
+#### Step count data
+```xml
+<Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone van Levi" sourceVersion="9.2" device="&lt;&lt;HKDevice: 0x174484920&gt;, name:iPhone, manufacturer:Apple, model:iPhone, hardware:iPhone8,1, software:9.2&gt;" unit="count" creationDate="2016-01-13 19:57:52 +0200" startDate="2016-01-13 19:08:24 +0200" endDate="2016-01-13 19:09:26 +0200" value="31"/>
+```
+
+#### Flights climbed data
+```xml
+<Record type="HKQuantityTypeIdentifierFlightsClimbed" sourceName="iPhone van Levi" sourceVersion="9.2" device="&lt;&lt;HKDevice: 0x174893150&gt;, name:iPhone, manufacturer:Apple, model:iPhone, hardware:iPhone8,1, software:9.2&gt;" unit="count" creationDate="2016-01-13 19:57:52 +0200" startDate="2016-01-13 19:29:43 +0200" endDate="2016-01-13 19:29:43 +0200" value="2"/>
+```
+
+#### Distance walked or ran data
+```xml
+<Record type="HKQuantityTypeIdentifierDistanceWalkingRunning" sourceName="iPhone van Levi" sourceVersion="9.2" device="&lt;&lt;HKDevice: 0x17089eaf0&gt;, name:iPhone, manufacturer:Apple, model:iPhone, hardware:iPhone8,1, software:9.2&gt;" unit="km" creationDate="2016-01-13 19:57:52 +0200" startDate="2016-01-13 19:08:24 +0200" endDate="2016-01-13 19:09:26 +0200" value="0.02432"/>
+```
+
+#### Sleep analysis data
+```xml
+<Record type="HKCategoryTypeIdentifierSleepAnalysis" sourceName="Clock" sourceVersion="50" device="&lt;&lt;HKDevice: 0x174c8cf30&gt;, name:iPhone, manufacturer:Apple, model:iPhone, hardware:iPhone8,1, software:10.0.2&gt;" creationDate="2016-10-17 07:30:22 +0200" startDate="2016-10-17 00:30:00 +0200" endDate="2016-10-17 07:30:22 +0200" value="HKCategoryValueSleepAnalysisInBed">
+ <MetadataEntry key="_HKPrivateSleepAlarmUserWakeTime" value="2016-10-18 05:30:00 +0000"/>
+ <MetadataEntry key="_HKPrivateSleepAlarmUserSetBedtime" value="2016-10-15 22:30:00 +0000"/>
+ <MetadataEntry key="HKTimeZone" value="Europe/Amsterdam"/>
+</Record>
+```
 
 ### Transforming data
-Now you have clean data to work with, so transforming it will be :peanuts:. Parse the data using the [`d3.csvParseRows()`][d3csvparserows]. As second argument to the parse function we add a mapping function. This function will transform the data to an object you can use. Because the original data was nested we have to append a array of values to each ID. This array will consist out of objects:
+When a clean JSON object is created I transformed it to another JSON object where all entries are merged per day. All data types except for the SleepCycle can be merged easily.
+
+### Activities (StepCount, DistanceWalkingRunning, FlightsClimbed)
+Transforming all activity data I have used the [`d3.nest()`][u_d3_nest] function. Within this project I have applied this function as follows:
 ```javascript
-var value = {
-    year: 2013,
-    wp: 134,
-    v_wp: 85
+/*
+ * Returns data merged, where all entries are merged to a day and stored as array element
+ */
+self.mergeDataPerDay = function (data, type) {
+  var dataPerDay = d3.nest()
+    .key(function (data) {
+      return data.startDate.toLocaleDateString();
+    })
+    .rollup(function (data) {
+      return d3.sum(data, function (group) {
+        return group.value;
+      });
+    })
+    .entries(data);
+  save(dataPerDay, type);
+  return dataPerDay;
+};
+```
+First level [key][u_d3_key] is unique, using the date string as ID. Then within the [rollup][u_d3_rollup] function the total sum of all values combined per day is returned. The [entries][u_d3_entries] function passes the data to the [nest][u_d3_nest] function.
+
+### Sleep Analysis (SleepCycle)
+It is a bit more complex to transform the SleepCycle data type. People tend to sleep before the new day begin, meaning sleeping before 00.00h and waking up the next day. So merging data per day requires a certain detection hours I could fall asleep and hours I could wake up. The code to do that looks as follows (comments explain the code):
+```javascript
+/*
+ * Returns sleep cycle data merged per day
+ * - Gets spread of hours accepted as minimal hours
+ * - Gets spread of hours accepted as maximal hours
+ * - Creates locale date string as key for each entry
+ * - Merges all entries to object {start: Date, end: Date, slept: number}
+ * - Checks if starting hours and waking hours of sleep are found within accepted spread of hours
+ * - Filters all undefined data out of data
+ * - Returns all entries with found values
+ * - Save sleepCyclePerDay to originalData
+ */
+self.createSleepCyclePerDay = function (data, minThreshold, maxThreshold) {
+  var minSpread = getMinHourSpread(minThreshold);
+  var maxSpread = getMaxHourSpread(maxThreshold);
+  var sleepCyclePerDay = d3.nest()
+    .key(function (data) {
+      return data.startDate.toLocaleDateString();
+    })
+    .rollup(function (data) {
+      return data.map(function (entry) {
+          var startTime = entry.startDate.getTime();
+          var endTime = entry.endDate.getTime();
+          var diffTime = endTime - startTime;
+          var startHours = entry.startDate.getHours();
+          var endHours = entry.endDate.getHours();
+          if (minSpread.indexOf(startHours) !== -1 && maxSpread.indexOf(endHours) !== -1) {
+            return {
+              start: entry.startDate,
+              end: entry.endDate,
+              slept: Math.round(diffTime / 36000) / 100 // 2 Decimal rounding: https://stackoverflow.com/questions/11832914/round-to-at-most-2-decimal-places-only-if-necessary
+            };
+          }
+        })
+        .filter(function (entry) {
+          return entry !== undefined;
+        });
+    })
+    .entries(data)
+    .filter(function (entry) {
+      return entry.value.length > 0;
+    });
+  save(sleepCyclePerDay, 'sleepCycle');
+  return sleepCyclePerDay;
 };
 ```
 
-1. First set the ID and name of the row:
+### Interaction with data
+After all the transforming and cleaning is done, the data is drawn as a bar chart. Drawing bar chart with a standard [Enter, Update, Exit][u_general_enter_update_exit_pattern] pattern is not that exciting the highlight in this documentation. What is exciting is the filtering and bar interaction that is added to this project. The following interactions are possible:
+1. [Switch filter type][u_switch_filter] - View data per week or per month.
+2. [Navigate filter type][u_nav_filter] - Navigate to next or previous type of timeframe (week or month).
+3. [Hover the bar][u_hover_bar] - View detailed information about each day by hovering a bar with your cursor.
+
+#### Switch filter type
+[`timeFilter.js`][u_timefilter] Adds two filter type button to the HTML. This includes filtering on 'week' and 'month'. When clicking on one of these buttons an event will be emited using [Events.js][u_events].
 ```javascript
-return {
-    id: row[0],
-    name: row[1],
-    ...
-  }
+Events.emit('timefilter/select', {
+  type: 'month'
+});
 ```
-2. Then add values by using a function to connect the right values to each year (for now I used a hardcoded year (2013), in the future this can be added dynamically):
+Using the pub sub pattern the created instances ([BarChart][u_barchart] and [SleepCycle][u_sleepcycle]) trigger their subscription to this event and will filter the data accordingly. After filtering the data, the visualization will be redrawn within the every instance.
+
+##### BarChart.js filter type selection event subscription
 ```javascript
-return {
-    ...
-    values: createValuesByYear(row, 2, 2013)
-  }
-```
-3. The function needs three arguments: `row` (holds all values), `startIndex` (where to start counting in row array) and `startYear` (year to start with appending values.
-    1. Create empty array `var values = []`.
-    2. Start loop on `startIndex`.
-    3. Add `year` by dividing `i` by two and add this to `year - 1`, first loop will give 2013 as result.
-    4. `v_wp` is the current index of row.
-    5. `wp` is the next index of row.
-    6. Add object to `var values = []` using [.push()][push].
-    7. Add extra `i++` to take steps of two.
-    8. Return array of objects.
-    
-```javascript
-function createValuesByYear(row, startIndex, startYear) {
-  var values = [];
-  for (var i = startIndex; row.length > i; i++) {
-    var valueObject = {
-      // Set year to current index minus 1 and step (always in steps of two) divided by 2
-      year: Number(startYear - 1 + i / 2),
-      v_wp: validNum(row[i]),
-      wp: validNum(row[i + 1])
-    }
-    // Add valueObject to values array
-    values.push(valueObject);
-    // Add extra increment to loop through pairs
-    i++;
-  }
-  return values;
+/*
+ * Handles time filter select event
+ * Gets start date
+ * Gets end date
+ * Gets originalData based on type of chart
+ * Filters data based on new startdate, enddate and given originalData
+ * Sets new data which is filtered
+ * Sets new start date
+ * Sets new end date
+ * Sets max value of filtered data
+ * Emits filter done event when everything is set
+ */
+function handleTimeFilterSelect(data) {
+  var endDate = t.getEndDate();
+  var newStartDate = t.getStartDate();
+  var originalData = u.originalData[self.params.type];
+  var filteredData = u.filterDataOnDate(newStartDate, endDate, originalData);
+  self.params.data = filteredData;
+  self.params.startDate = newStartDate;
+  self.params.endDate = endDate;
+  self.params.maxValue = u.getMaxValue(filteredData);
+  Events.emit('barchart/filter/time/done');
 }
 ```
-4. Good job! You are still reading this `readme.md`, have a :banana: to keep your focus up. Also the data is now cleaned, transformed and ready for loading into d3.
 
-### Displaying data
-I will not go in depth for this part, most of the code patterns used are common within D3 environment. Also [`index.js`][indexjs] is well commented so it "should" explain itself. What I will do is shortlist the most important components:
-#### 1. BarGroup
-Contains two bars, `werkzame personen` and `vestigingen met wp`, for each ID and the selected year. The `transform` attribute is the position on the xAxis.
-```html
-<g class="bar-group" transform="translate(8, 0)">
-  <rect class="bar" x="2" y="272" width="23" height="0" fill="#ff7f0e"></rect>
-  <rect class="bar" x="26" y="272" width="23" height="0" fill="#1f77b4"></rect>
-</g>
-```
-
-#### 2. Bar
-Contains value of `werkzame personen` or `vestigingen met wp`. 
-```html
-<rect class="bar" x="26" y="272" width="23" height="0" fill="#1f77b4"></rect>
-```
-
-#### 3. xAxis
-xAxis is dynamically created from the IDs found in the data. The IDs are then mapped out over the xAxis using `ticks`.
-```html
-<g class="x-axis" transform="translate(0,272)" fill="none" font-size="10" font-family="sans-serif" text-anchor="middle">  <path class="domain" stroke="#000" d="M0.5,6V0.5H1220.5V6"></path>
- <g class="tick" opacity="1" transform="translate(33.5,0)">
-  <line stroke="#000" y2="6"></line>
-  <text fill="#000" y="9" dy="0.71em">A</text>
- </g>
-  ...
-```
-
-#### 4. yAxis
-yAxis is dynamically created from the min and max value of `werkzame personen` or `vestigingen met wp`. The nummeric values are then mapped out over the yAxis using `ticks`. 
-```html
-<g class="y-axis" fill="none" font-size="10" font-family="sans-serif" text-anchor="end">
-  <path class="domain" stroke="#000" d="M-6,272.5H0.5V0.5H-6"></path>
-  <g class="tick" opacity="1" transform="translate(0,272.5)">
-    <line stroke="#000" x2="-6"></line>
-    <text fill="#000" x="-9" dy="0.32em">0k</text>
-  </g>
-```
-
-### Interact with the data
-Following the instructions of the [assignment](https://github.com/cmda-fe3/course-17-18/tree/master/assessment-2#interactive) I have added a sort and filter to the data visualization. 
-
-#### 1. Sort
-For this I have added two basic sort options: `ASC` and `DESC`. These options sort on the value of `werkzame personen` and `vestigingen met wp`. The tricky part is to sort the data using nested values. After selecting a sorting option the following function will trigger:
+##### SleepCycle.js filter type selection event subscription
 ```javascript
-function handleSortChange(data) {
-  currentData = currentData.sort(function(current, next) {
-    var currentMax = d3.max(current.values, total);
-    var nextMax = d3.max(next.values, total);
-    return data.sort === 'ASC' ? currentMax - nextMax : nextMax - currentMax;
-  });
-  setDomains();
-  drawChart(currentData);
+/*
+ * Handles time filter select event
+ * Gets start date
+ * Gets end date
+ * Gets originalData based on type of chart
+ * Filters data based on new startdate, enddate and given originalData
+ * Sets new data which is filtered
+ * Sets new start date
+ * Sets new end date
+ * Emits filter done event when everything is set
+ */
+function handleTimeFilterSelect(data) {
+  var endDate = t.getEndDate();
+  var newStartDate = t.getStartDate();
+  var originalData = u.originalData[self.params.type];
+  self.params.data = u.filterDataOnDate(newStartDate, endDate, originalData);
+  self.params.startDate = newStartDate;
+  self.params.endDate = endDate;
+  Events.emit('sleepcycle/filter/time/done');
 }
 ```
-1. The `currentData` variable in the global scope is overwritten with result of the [`.sort()`][sort].
-2. Sort function gives two variables `current` and `next`. Get the max total value of both.
-3. Return `currentMax - nextMax` if sorting is `ASC` and `nextMax - currentMax`.
-4. `setDomains()` fires to set the new scale and domain for the xAxis.
-5. Draw data on chart using `drawChart()` passing the new data to the function.
 
-#### 2. Filter
-Filtering is actually pretty simple. When selecting a year with the year select option, a global scope variable `selectYear` will be overwritten:
+#### Navigate filter type
+[`timeFilter.js`][u_timefilter] Adds two filter navigation buttons to the HTML. This includes next and previous type of time frame ('week' or 'month'). When clicking on one of these buttons an event will be emited using [Events.js][u_events].
 ```javascript
-function handleYearChange(data) {
-  selectYear = data.year;
-  setDomains();
-  drawChart(currentData);
-}
+Events.emit('timefilter/nav');
 ```
-Within the `drawChart()` function there is a check which year is selected. Based on year the matching values will be loaded and drawn onto the chart. 
-```javascript
-barGroup.selectAll('.bar')
-    .data(createXGroupKeyValue, function(data) {
-      return data.key;
-    })
-```
-When the data is joined to the single bars a mapping function selects the right year, namely `createXGroupKeyValue`:
-```javascript
-function createXGroupKeyValue(data) {
-  // Work with current value of selected year
-  var currentValue = getValueOfYear(data.values);
-  return keys.map(function(key) {
-    // Return object with value for each key
-    return {
-      key: key,
-      value: currentValue[0][key]
-    };
-  });
-}
+Using the pub sub pattern the created instances ([BarChart][u_barchart] and [SleepCycle][u_sleepcycle]) trigger their subscription to this event and will filter the data accordingly. After filtering the data, the visualization will be redrawn within the every instance.
 
-function getValueOfYear(values) {
-  return values.filter(function(value) {
-    return value.year === selectYear;
-  });
+##### BarChart.js filter navigate event subscription
+```javascript
+/*
+ * Handles time filter select event
+ * Gets start date
+ * Gets end date
+ * Gets originalData based on type of chart
+ * Filters data based on new startdate, enddate and given originalData
+ * Sets new data which is filtered
+ * Sets new start date
+ * Sets new end date
+ * Sets max value of filtered data
+ * Emits filter done event when everything is set
+ */
+function handleTimeFilterSelect(data) {
+  var endDate = t.getEndDate();
+  var newStartDate = t.getStartDate();
+  var originalData = u.originalData[self.params.type];
+  var filteredData = u.filterDataOnDate(newStartDate, endDate, originalData);
+  self.params.data = filteredData;
+  self.params.startDate = newStartDate;
+  self.params.endDate = endDate;
+  self.params.maxValue = u.getMaxValue(filteredData);
+  Events.emit('barchart/filter/time/done');
 }
 ```
-`getValueOfYear()` makes sure the right value is loaded using a [`.filter()`][filter] function. It returns the values where `value.year` is the same as the selected year.
+
+##### SleepCycle.js filter navigate event subscription
+```javascript
+/*
+ * Handles time filter nav event
+ * Gets start date
+ * Gets end date
+ * Gets originalData based on type of chart
+ * Filters data based on new startdate, enddate and given originalData
+ * Sets new data which is filtered
+ * Sets new start date
+ * Sets new end date
+ * Emits filter done event when everything is set
+ */
+function handleTimeFilterNav() {
+  var newEndDate = t.getEndDate();
+  var newStartDate = t.getStartDate();
+  var originalData = u.originalData[self.params.type];
+  self.params.data = u.filterDataOnDate(newStartDate, newEndDate, originalData);
+  self.params.startDate = newStartDate;
+  self.params.endDate = newEndDate;
+  Events.emit('sleepcycle/filter/time/nav');
+}
+```
+
+#### Hover the bar
+
+
+## Dependencies
+This project has a couple of dependencies listed below. These dependencies are mandatory to get the code running without bugs. There are other includes in this project, but are not required to get the code working.
+
+### External
+* [MomentJS][u_momentjs](v2.19.1) - Parse, validate, manipulate, and display dates and times in JavaScript.
+* [D3][u_d3](v4) - D3.js is a JavaScript library for manipulating documents based on data.
+
+### Internal (custom libraries)
+* [Events.js][u_events] - Adds pub-sub pattern possibilities to your code.
+* [Utils.js][u_utils] - Adds a bundle of functions to do general data mutations and get information.
+* [BarChart.js][u_barchart] - Creates a bar chart with given parameters.
+* [SleepCycle.js][u_sleepcycle] - Creates a sleep cycle bar chart with given parameters.
+
+
+## Features
 
 ## License
-* [Sorting and Filtering Grouped Bart Charts](https://github.com/levizimmerman/fe3-assessment-2) - Released under the [GNU General Public License, version 3.](https://opensource.org/licenses/GPL-3.0)
-* [Grouped Bar Chart code snippets](https://bl.ocks.org/mbostock/3887051) - Released under the [GNU General Public License, version 3.](https://opensource.org/licenses/GPL-3.0)
-* [Enter, update, exit pattern](http://bl.ocks.org/fryford/e1c8199c70ee85c0cf50) - No license
 
-
-[slice]: https://developer.mozilla.org/nl/docs/Web/JavaScript/Reference/Global_Objects/Array/slice
-[indexof]: https://developer.mozilla.org/nl/docs/Web/JavaScript/Reference/Global_Objects/Array/indexOf
-[split]: https://developer.mozilla.org/nl/docs/Web/JavaScript/Reference/Global_Objects/String/split
-[d3text]: https://github.com/d3/d3-request/blob/master/README.md#text
-[indexcsv]: https://github.com/levizimmerman/fe3-assessment-2/blob/master/index.csv
-[dataamsterdam]: https://data.amsterdam.nl/#?dte=catalogus%2Fapi%2F3%2Faction%2Fpackage_show%3Fid%3D38ff8bcd-3049-47fb-b34b-2337fe18bdec&dtfs=T&dsf=groups::werk-inkomen&mpb=topografie&mpz=11&mpv=52.3731081:4.8932945
-[newline]: https://en.wikipedia.org/wiki/Newline
-[foreach]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach
-[replace]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace
-[join]: https://developer.mozilla.org/nl/docs/Web/JavaScript/Reference/Global_Objects/Array/join
-[d3csvparserows]: https://github.com/d3/d3-dsv/blob/master/README.md#csvParseRows
-[push]: https://developer.mozilla.org/nl/docs/Web/JavaScript/Reference/Global_Objects/Array/push
-[indexjs]: https://github.com/levizimmerman/fe3-assessment-2/blob/master/index.js
-[filter]: https://developer.mozilla.org/nl/docs/Web/JavaScript/Reference/Global_Objects/Array/filter
-[sort]: https://developer.mozilla.org/nl/docs/Web/JavaScript/Reference/Global_Objects/Array/sort
+[u_momentjs]: https://momentjs.com/
+[u_d3]: https://d3js.org/
+[u_events]: https://github.com/levizimmerman/fe3-assessment-3/blob/master/shared/events.js
+[u_utils]: https://github.com/levizimmerman/fe3-assessment-3/blob/master/shared/utils.js
+[u_barchart]: https://github.com/levizimmerman/fe3-assessment-3/blob/master/graphs/BarChart.js
+[u_sleepcycle]: https://github.com/levizimmerman/fe3-assessment-3/blob/master/graphs/SleepCycle.js
+[u_app_health]: https://www.apple.com/ios/health/
+[u_workflow]: https://github.com/levizimmerman/fe3-assessment-3#workflow
+[u_d3_xml]: https://github.com/d3/d3-request/blob/master/README.md#xml
+[u_xml]: https://github.com/levizimmerman/fe3-assessment-3/blob/master/index.xml
+[u_step_count_data]: https://github.com/levizimmerman/fe3-assessment-3#step-count-data
+[u_distance_walked_or_ran_data]: https://github.com/levizimmerman/fe3-assessment-3#distance-walked-or-ran-data
+[u_flights_climbed_data]: https://github.com/levizimmerman/fe3-assessment-3#flights-climbed-data
+[u_sleep_analyis_data]: https://github.com/levizimmerman/fe3-assessment-3#sleep-analysis-data
+[u_d3_nest]: https://github.com/d3/d3-collection/blob/master/README.md#nest
+[u_d3_key]: https://github.com/d3/d3-collection/blob/master/README.md#nest_key
+[u_d3_rollup]: https://github.com/d3/d3-collection/blob/master/README.md#nest_rollup
+[u_d3_entries]: https://github.com/d3/d3-collection/blob/master/README.md#nest_entries
+[u_general_enter_update_exit_pattern]: https://bl.ocks.org/mbostock/3808234
+[u_switch_filter]: https://github.com/levizimmerman/fe3-assessment-3#switch-filter-type
+[u_nav_filter]: https://github.com/levizimmerman/fe3-assessment-3#navigate-filter-type
+[u_hover_bar]: https://github.com/levizimmerman/fe3-assessment-3#hover-the-bar
+[u_timefilter]: https://github.com/levizimmerman/fe3-assessment-3/blob/master/shared/timeFilter.js
